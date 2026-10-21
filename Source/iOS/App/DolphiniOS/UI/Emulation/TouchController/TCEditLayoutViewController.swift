@@ -9,6 +9,7 @@ import UIKit
   private var currentPadView: TCView?
   private let containerView = UIView()
   private let hintLabel = UILabel()
+  private var lastPadSize = CGSize.zero
 
   @objc public static func present(from presenter: UIViewController) {
     let vc = TCEditLayoutViewController()
@@ -30,7 +31,7 @@ import UIKit
     navigationItem.titleView = segmentedControl
 
     hintLabel.translatesAutoresizingMaskIntoConstraints = false
-    hintLabel.text = "Drag controls to reposition. Offsets save automatically."
+    hintLabel.text = "Drag controls to reposition. Each controller's layout is saved automatically."
     hintLabel.font = UIFont.systemFont(ofSize: 13, weight: .medium)
     hintLabel.textColor = .secondaryLabel
     hintLabel.textAlignment = .center
@@ -50,7 +51,17 @@ import UIKit
       containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
       containerView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
     ])
+  }
 
+  public override func viewDidLayoutSubviews() {
+    super.viewDidLayoutSubviews()
+
+    // The pads must be created after the container has a real size, otherwise the
+    // nib's controls end up laid out in a zero-sized view.
+    let size = containerView.bounds.size
+    guard size.width > 0, size.height > 0, size != lastPadSize else { return }
+
+    lastPadSize = size
     loadCurrentPad()
   }
 

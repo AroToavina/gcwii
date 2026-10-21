@@ -162,6 +162,10 @@ import UIKit
   
   @objc func setEditModeEnabled(_ enabled: Bool)
   {
+    // Controls check this flag to avoid sending input while their positions are
+    // being edited. It also drives the "Done Editing Layout" menu title.
+    TCView.isEditMode = enabled
+
     guard let real = real_view else { return }
     let controls = findMovableControls(in: real)
     for control in controls

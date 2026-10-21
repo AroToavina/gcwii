@@ -40,11 +40,14 @@ typedef NS_ENUM(NSInteger, DOLEmulationVisibleTouchPad) {
 
 @interface EmulationiOSViewController ()
 
+- (void)presentLayoutEditor;
+
 @end
 
 @implementation EmulationiOSViewController {
   DOLEmulationVisibleTouchPad _visibleTouchPad;
   int _stateSlot;
+  bool _resumeAfterLayoutEditor;
 }
 
 - (void)viewDidLoad {
@@ -79,6 +82,25 @@ typedef NS_ENUM(NSInteger, DOLEmulationVisibleTouchPad) {
   if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
     self.pullDownLeftConstraint.active = false;
     self.pullDownCenterConstraint.active = true;
+  }
+}
+
+- (void)viewDidAppear:(BOOL)animated {
+  [super viewDidAppear:animated];
+
+  // Resume emulation after the layout editor is dismissed, unless the game was
+  // already paused before it was opened.
+  if (_resumeAfterLayoutEditor) {
+    _resumeAfterLayoutEditor = false;
+
+    // Pick up the positions that were just edited without waiting for the next
+    // layout pass of the live touch pads.
+    for (TCView* padView in self.touchPads) {
+      [padView applySavedLayout];
+    }
+
+    [self recreateMenu];
+    [EmulationCoordinator shared].userRequestedPause = false;
   }
 }
 
@@ -184,6 +206,11 @@ typedef NS_ENUM(NSInteger, DOLEmulationVisibleTouchPad) {
       [self promptResetCurrentTouchLayout];
     }];
     [controllerActions addObject:resetLayoutAction];
+
+    UIAction* customizeLayoutsAction = [UIAction actionWithTitle:@"Edit Layouts for Each Controller" image:[UIImage systemImageNamed:@"square.grid.2x2"] identifier:nil handler:^(UIAction*) {
+      [self presentLayoutEditor];
+    }];
+    [controllerActions addObject:customizeLayoutsAction];
   }
 
   if (wiimoteTouchPadAttached) {
@@ -420,16 +447,32 @@ typedef NS_ENUM(NSInteger, DOLEmulationVisibleTouchPad) {
   }
 }
 
+- (void)presentLayoutEditor {
+  // Leave any in-game inline editing session before opening the full editor.
+  for (TCView* padView in self.touchPads) {
+    [padView setEditModeEnabled:false];
+  }
+
+  // Pause while editing so the game does not keep running behind the editor.
+  // viewDidAppear resumes it when the editor is dismissed.
+  _resumeAfterLayoutEditor = ![EmulationCoordinator shared].userRequestedPause;
+  [EmulationCoordinator shared].userRequestedPause = true;
+
+  [self.navigationController setNavigationBarHidden:true animated:true];
+  [TCEditLayoutViewController presentFrom:self];
+}
+
 - (void)promptResetCurrentTouchLayout {
   UIAlertController* alert = [UIAlertController alertControllerWithTitle:@"Reset Touch Layout"
                                                                  message:@"Reset visible touch controls to their default positions?"
                                                           preferredStyle:UIAlertControllerStyleAlert];
   [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
   [alert addAction:[UIAlertAction actionWithTitle:@"Reset" style:UIAlertActionStyleDestructive handler:^(UIAlertAction*) {
-    for (TCView* padView in self.touchPads) {
-      if (!padView.hidden) {
-        [padView resetLayoutToDefaults];
-      }
+    const NSInteger index = (NSInteger)self->_visibleTouchPad - 1;
+    if (self->_visibleTouchPad != DOLEmulationVisibleTouchPadNone &&
+        index >= 0 && index < (NSInteger)self.touchPads.count) {
+      TCView* padView = self.touchPads[(NSUInteger)index];
+      [padView resetLayoutToDefaults];
     }
   }]];
   [self presentViewController:alert animated:true completion:nil];

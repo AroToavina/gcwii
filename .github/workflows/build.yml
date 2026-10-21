@@ -1,0 +1,87 @@
+name: Build unsigned iOS IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-ipa:
+    runs-on: macos-15
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Checkout iOS build dependencies
+        run: |
+          git submodule update --init --depth=1 --jobs=4 -- \
+            Externals/cubeb/cubeb \
+            Externals/curl/curl \
+            Externals/enet/enet \
+            Externals/fmt/fmt \
+            Externals/implot/implot \
+            Externals/libspng/libspng \
+            Externals/lz4/lz4 \
+            Externals/miniupnpc/miniupnp \
+            Externals/minizip-ng/minizip-ng \
+            Externals/rcheevos/rcheevos \
+            Externals/SFML/SFML \
+            Externals/spirv_cross/SPIRV-Cross \
+            Externals/tinygltf/tinygltf \
+            Externals/Vulkan-Headers \
+            Externals/VulkanMemoryAllocator \
+            Externals/watcher/watcher \
+            Externals/xxhash/xxHash \
+            Externals/zlib-ng/zlib-ng \
+            Externals/zstd/zstd
+
+      - name: Install build tools
+        run: |
+          brew install cmake ninja bartycrouch
+
+      - name: Build non-jailbroken iOS app
+        run: |
+          xcodebuild archive \
+            -project Source/iOS/App/DolphiniOS.xcodeproj \
+            -scheme "DiOS (NJB)" \
+            -configuration "Release (Non-Jailbroken)" \
+            -archivePath "$RUNNER_TEMP/DolphiniOS.xcarchive" \
+            -resultBundlePath "$RUNNER_TEMP/DolphiniOS.xcresult" \
+            -derivedDataPath "$RUNNER_TEMP/build-Xcode" \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            DOL_PBID_ORGANIZATION_IDENTIFIER="me.oatmealdome" \
+            DOL_APP_ICON_ASSET_NAME="AppIcon" \
+            DOL_BUILD_SOURCE="development" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Upload Xcode build diagnostics
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: Xcode-build-diagnostics
+          path: ${{ runner.temp }}/DolphiniOS.xcresult
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Package unsigned IPA
+        run: |
+          APP_PATH="$RUNNER_TEMP/DolphiniOS.xcarchive/Products/Applications/DolphiniOS.app"
+          test -d "$APP_PATH"
+          mkdir -p "$RUNNER_TEMP/ipa/Payload"
+          ditto "$APP_PATH" "$RUNNER_TEMP/ipa/Payload/DolphiniOS.app"
+          cd "$RUNNER_TEMP/ipa"
+          zip -qry "$GITHUB_WORKSPACE/DolphiniOS-unsigned.ipa" Payload
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DolphiniOS-unsigned-IPA
+          path: DolphiniOS-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14

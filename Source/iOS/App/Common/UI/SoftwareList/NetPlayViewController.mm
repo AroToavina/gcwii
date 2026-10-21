@@ -26,8 +26,28 @@
 #import "UICommon/GameFile.h"
 
 @class NetPlayViewController;
+@class NetPlayGamePickerViewController;
 
-@interface NetPlayViewController ()
+@protocol NetPlayGamePickerViewControllerDelegate <NSObject>
+- (void)gamePicker:(NetPlayGamePickerViewController*)picker
+    didSelectGame:(GameFilePtrWrapper*)game;
+@end
+
+// A searchable list instead of an action sheet: libraries can hold hundreds of
+// games, and the host has to be able to pick one before opening the room as well
+// as from the lobby afterwards.
+@interface NetPlayGamePickerViewController : UITableViewController <UISearchResultsUpdating>
+
+@property(nonatomic, weak) id<NetPlayGamePickerViewControllerDelegate> pickerDelegate;
+@property(nonatomic, strong) NSArray<GameFilePtrWrapper*>* games;
+@property(nonatomic, strong, nullable) GameFilePtrWrapper* selectedGame;
+
+- (instancetype)initWithGames:(NSArray<GameFilePtrWrapper*>*)games
+                 selectedGame:(nullable GameFilePtrWrapper*)selectedGame;
+
+@end
+
+@interface NetPlayViewController () <NetPlayGamePickerViewControllerDelegate>
 - (void)handleNetPlayEvent:(int)event message:(NSString*)message;
 - (BOOL)netPlayBootGame:(NSString*)path sessionData:(BootSessionData*)sessionData;
 - (void)presentConnectionLostAlertIfNeeded;
@@ -36,6 +56,11 @@
 - (void)joinListedSessionAtIndex:(NSUInteger)index password:(nullable NSString*)password;
 - (void)updateSessionControlsForGameState:(bool)game_running;
 - (void)hideSessionSheet;
+- (void)selectGame;
+- (void)setSelectedGame:(nullable GameFilePtrWrapper*)wrapper;
+- (void)updateSetupGameButton;
+- (void)updateSessionGameState;
+- (NSArray<GameFilePtrWrapper*>*)libraryGames;
 @end
 
 namespace
@@ -117,6 +142,117 @@ static UIViewController* DOLTopViewController(void)
   return nil;
 }
 
+@implementation NetPlayGamePickerViewController {
+  NSArray<GameFilePtrWrapper*>* _filteredGames;
+  UISearchController* _searchController;
+}
+
+- (instancetype)initWithGames:(NSArray<GameFilePtrWrapper*>*)games
+                 selectedGame:(nullable GameFilePtrWrapper*)selectedGame
+{
+  if (self = [super initWithStyle:UITableViewStylePlain])
+  {
+    _games = games ?: @[];
+    _filteredGames = _games;
+    _selectedGame = selectedGame;
+    self.title = @"Select Game";
+  }
+  return self;
+}
+
+- (void)viewDidLoad
+{
+  [super viewDidLoad];
+  self.tableView.rowHeight = 56;
+  self.navigationItem.leftBarButtonItem =
+      [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel
+                                                    target:self
+                                                    action:@selector(cancelTapped)];
+
+  _searchController = [[UISearchController alloc] initWithSearchResultsController:nil];
+  _searchController.searchResultsUpdater = self;
+  _searchController.obscuresBackgroundDuringPresentation = NO;
+  self.navigationItem.searchController = _searchController;
+  self.navigationItem.hidesSearchBarWhenScrolling = NO;
+  self.definesPresentationContext = YES;
+}
+
+- (void)cancelTapped
+{
+  [self dismissViewControllerAnimated:true completion:nil];
+}
+
+- (void)updateSearchResultsForSearchController:(UISearchController*)searchController
+{
+  NSString* query = [searchController.searchBar.text
+      stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+  if (query.length == 0)
+  {
+    _filteredGames = _games;
+  }
+  else
+  {
+    NSMutableArray<GameFilePtrWrapper*>* matches = [[NSMutableArray alloc] init];
+    for (GameFilePtrWrapper* wrapper in _games)
+    {
+      NSString* title =
+          ToNSString(wrapper.gameFile->GetName(UICommon::GameFile::Variant::LongAndPossiblyCustom));
+      NSString* game_id = ToNSString(wrapper.gameFile->GetGameID());
+      if ([title rangeOfString:query options:NSCaseInsensitiveSearch].location != NSNotFound ||
+          [game_id rangeOfString:query options:NSCaseInsensitiveSearch].location != NSNotFound)
+      {
+        [matches addObject:wrapper];
+      }
+    }
+    _filteredGames = matches;
+  }
+  [self.tableView reloadData];
+}
+
+- (NSInteger)numberOfSectionsInTableView:(UITableView*)tableView
+{
+  return 1;
+}
+
+- (NSInteger)tableView:(UITableView*)tableView numberOfRowsInSection:(NSInteger)section
+{
+  return static_cast<NSInteger>(_filteredGames.count);
+}
+
+- (UITableViewCell*)tableView:(UITableView*)tableView
+        cellForRowAtIndexPath:(NSIndexPath*)indexPath
+{
+  static NSString* const identifier = @"NetPlayGameCell";
+  UITableViewCell* cell = [tableView dequeueReusableCellWithIdentifier:identifier];
+  if (!cell)
+  {
+    cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle
+                                 reuseIdentifier:identifier];
+  }
+
+  GameFilePtrWrapper* wrapper = _filteredGames[static_cast<NSUInteger>(indexPath.row)];
+  cell.textLabel.text =
+      ToNSString(wrapper.gameFile->GetName(UICommon::GameFile::Variant::LongAndPossiblyCustom));
+  cell.detailTextLabel.text =
+      [NSString stringWithFormat:@"%@ · %@", ToNSString(wrapper.gameFile->GetGameID()),
+                                 ToNSString(wrapper.gameFile->GetFilePath()).lastPathComponent];
+  cell.detailTextLabel.textColor = UIColor.secondaryLabelColor;
+  cell.accessoryType =
+      wrapper == _selectedGame ? UITableViewCellAccessoryCheckmark : UITableViewCellAccessoryNone;
+  return cell;
+}
+
+- (void)tableView:(UITableView*)tableView didSelectRowAtIndexPath:(NSIndexPath*)indexPath
+{
+  [tableView deselectRowAtIndexPath:indexPath animated:true];
+  GameFilePtrWrapper* wrapper = _filteredGames[static_cast<NSUInteger>(indexPath.row)];
+  _selectedGame = wrapper;
+  [tableView reloadData];
+  [self.pickerDelegate gamePicker:self didSelectGame:wrapper];
+}
+
+@end
+
 @implementation NetPlayViewController {
   UISegmentedControl* _roleControl;
   UISegmentedControl* _connectionControl;
@@ -148,6 +284,8 @@ static UIViewController* DOLTopViewController(void)
   UIStackView* _setupStack;
   UIStackView* _sessionStack;
   NSArray<GameFilePtrWrapper*>* _games;
+  GameFilePtrWrapper* _selectedGame;
+  UIButton* _setupGameButton;
   std::vector<ListedSession> _listedSessions;
   void* _nativeSession;
   void* _callbackContext;
@@ -294,6 +432,14 @@ static UIViewController* DOLTopViewController(void)
   [_roleControl addTarget:self action:@selector(updatePlaceholders)
          forControlEvents:UIControlEventValueChanged];
   [_setupStack addArrangedSubview:_roleControl];
+
+  _setupGameButton = [UIButton buttonWithType:UIButtonTypeSystem];
+  _setupGameButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeading;
+  _setupGameButton.titleLabel.numberOfLines = 2;
+  _setupGameButton.titleLabel.textAlignment = NSTextAlignmentLeft;
+  [_setupGameButton addTarget:self action:@selector(selectGame)
+             forControlEvents:UIControlEventTouchUpInside];
+  [_setupStack addArrangedSubview:_setupGameButton];
 
   _connectionControl = [[UISegmentedControl alloc] initWithItems:@[@"Direct", @"Traversal"]];
   _connectionControl.selectedSegmentIndex =
@@ -507,6 +653,8 @@ static UIViewController* DOLTopViewController(void)
 {
   const bool traversal = _connectionControl.selectedSegmentIndex == 1;
   const bool hosting = _roleControl.selectedSegmentIndex == 1;
+  _setupGameButton.hidden = !hosting;
+  [self updateSetupGameButton];
   _addressField.placeholder = traversal ? @"8-character room code" : @"Host IP address";
   if (hosting)
   {
@@ -584,7 +732,7 @@ static UIViewController* DOLTopViewController(void)
   _connectButton.enabled = false;
   s_active_netplay_controller = self;
   _statusLabel.text = hosting ? @"Starting NetPlay host…" : @"Connecting to NetPlay…";
-  _games = [[GameFileCacheManager sharedManager] getGames];
+  _games = [self libraryGames];
   std::vector<std::shared_ptr<const UICommon::GameFile>> gameSharedPtrs;
   gameSharedPtrs.reserve(_games.count);
   for (GameFilePtrWrapper* wrapper in _games)
@@ -686,10 +834,8 @@ static UIViewController* DOLTopViewController(void)
           });
         });
       }
-      if (hosting && self->_games.count > 0)
-        [self setSelectedGame:self->_games.firstObject];
-      else if (hosting)
-        self->_gameLabel.text = @"Game: (No game in library)";
+      if (hosting)
+        [self updateSessionGameState];
       [self updateControllerMappings];
     });
   });
@@ -709,32 +855,97 @@ static UIViewController* DOLTopViewController(void)
 
 - (void)setSelectedGame:(GameFilePtrWrapper*)wrapper
 {
-  if (!_nativeSession || !wrapper)
+  if (!wrapper)
     return;
+
+  _selectedGame = wrapper;
+  [self updateSetupGameButton];
+  if (!_nativeSession)
+    return;
+
   const std::string path = wrapper.gameFile->GetFilePath();
-  if (DOLNetPlaySetGame(_nativeSession, path.c_str()))
-    _gameLabel.text = [NSString stringWithFormat:@"Game: %@", ToNSString(wrapper.gameFile->GetName(UICommon::GameFile::Variant::LongAndPossiblyCustom))];
+  NSString* title =
+      ToNSString(wrapper.gameFile->GetName(UICommon::GameFile::Variant::LongAndPossiblyCustom));
+  if (!DOLNetPlaySetGame(_nativeSession, path.c_str()))
+  {
+    _gameLabel.textColor = UIColor.systemRedColor;
+    _gameLabel.text = [NSString stringWithFormat:@"Could not select %@ for this session.", title];
+    return;
+  }
+  _gameLabel.textColor = UIColor.labelColor;
+  _gameLabel.text = [NSString stringWithFormat:@"Game: %@", title];
+  [_changeGameButton setTitle:@"Change game" forState:UIControlStateNormal];
+}
+
+- (void)updateSetupGameButton
+{
+  NSString* title;
+  if (_selectedGame)
+  {
+    title = [NSString
+        stringWithFormat:@"Game: %@",
+                         ToNSString(_selectedGame.gameFile->GetName(
+                             UICommon::GameFile::Variant::LongAndPossiblyCustom))];
+  }
+  else
+  {
+    title = @"Game: none selected — tap to choose the game to host";
+  }
+  [_setupGameButton setTitle:title forState:UIControlStateNormal];
+}
+
+- (NSArray<GameFilePtrWrapper*>*)libraryGames
+{
+  if (_games.count == 0)
+  {
+    // The cache can still be empty when NetPlay is opened straight from the
+    // software list, which would otherwise leave the host with nothing to pick.
+    [[GameFileCacheManager sharedManager] rescan];
+    _games = [[GameFileCacheManager sharedManager] getGames];
+  }
+  return _games;
 }
 
 - (void)selectGame
 {
-  if (_roleControl.selectedSegmentIndex != 1 || _games.count == 0)
+  if (_roleControl.selectedSegmentIndex != 1)
     return;
-  UIAlertController* picker = [UIAlertController alertControllerWithTitle:@"Select game"
-                                                                   message:nil
-                                                            preferredStyle:UIAlertControllerStyleActionSheet];
-  for (GameFilePtrWrapper* wrapper in _games)
+
+  NSArray<GameFilePtrWrapper*>* games = [self libraryGames];
+  if (games.count == 0)
   {
-    NSString* title = ToNSString(wrapper.gameFile->GetName(UICommon::GameFile::Variant::LongAndPossiblyCustom));
-    [picker addAction:[UIAlertAction actionWithTitle:title style:UIAlertActionStyleDefault handler:^(UIAlertAction*) {
-      [self setSelectedGame:wrapper];
-    }]];
+    [self netPlayError:@"No games were found in your library. Add a game, then try hosting again."];
+    return;
   }
-  [picker addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-  picker.popoverPresentationController.sourceView = self.view;
-  picker.popoverPresentationController.sourceRect = CGRectMake(self.view.bounds.size.width / 2,
-                                                                 self.view.bounds.size.height / 2, 1, 1);
-  [self presentViewController:picker animated:true completion:nil];
+
+  NetPlayGamePickerViewController* picker =
+      [[NetPlayGamePickerViewController alloc] initWithGames:games selectedGame:_selectedGame];
+  picker.pickerDelegate = self;
+  UINavigationController* navigationController =
+      [[UINavigationController alloc] initWithRootViewController:picker];
+  navigationController.modalPresentationStyle = UIModalPresentationFormSheet;
+  [self presentViewController:navigationController animated:true completion:nil];
+}
+
+- (void)gamePicker:(NetPlayGamePickerViewController*)picker
+    didSelectGame:(GameFilePtrWrapper*)game
+{
+  [picker dismissViewControllerAnimated:true completion:nil];
+  [self setSelectedGame:game];
+}
+
+- (void)updateSessionGameState
+{
+  if (_selectedGame)
+  {
+    [self setSelectedGame:_selectedGame];
+    return;
+  }
+
+  _gameLabel.textColor = UIColor.secondaryLabelColor;
+  _gameLabel.text =
+      _games.count == 0 ? @"No game selected, and no games were found in your library." :
+                          @"No game selected yet. Tap “Select game” so players know what to load.";
 }
 
 - (UIStepper*)bufferStepperWithValue:(u32)value action:(SEL)action
@@ -960,6 +1171,7 @@ static UIViewController* DOLTopViewController(void)
   _sessionStack.hidden = true;
   _setupStack.hidden = false;
   _statusLabel.text = @"Disconnected";
+  [_changeGameButton setTitle:@"Select game" forState:UIControlStateNormal];
   if (!session)
     return;
   dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{

@@ -30,6 +30,18 @@ typedef struct DOLNetPlayPlayerInfo
   char name[128];
 } DOLNetPlayPlayerInfo;
 
+// Mirrors NetPlay::SyncIdentifierComparison. Ordered from best to worst.
+typedef enum DOLNetPlayGameComparison
+{
+  DOLNetPlayGameComparisonSameGame = 0,
+  DOLNetPlayGameComparisonDifferentHash = 1,
+  DOLNetPlayGameComparisonDifferentDiscNumber = 2,
+  DOLNetPlayGameComparisonDifferentRevision = 3,
+  DOLNetPlayGameComparisonDifferentRegion = 4,
+  DOLNetPlayGameComparisonDifferentGame = 5,
+  DOLNetPlayGameComparisonUnknown = 6,
+} DOLNetPlayGameComparison;
+
 enum
 {
   DOLNetPlayEventPlayers = 0,
@@ -65,6 +77,7 @@ __attribute__((visibility("default"))) bool DOLNetPlayGetLocalIP(char* output, s
 __attribute__((visibility("default"))) bool DOLNetPlaySetGame(void* session, const char* path);
 __attribute__((visibility("default"))) bool DOLNetPlayHasGameSelected(void* session);
 __attribute__((visibility("default"))) bool DOLNetPlayIsSelectedGameAvailable(void* session);
+__attribute__((visibility("default"))) int DOLNetPlayGetSelectedGameComparison(void* session);
 __attribute__((visibility("default"))) bool DOLNetPlayGetSelectedGameTitle(void* session,
                                                                           char* output,
                                                                           size_t output_size);

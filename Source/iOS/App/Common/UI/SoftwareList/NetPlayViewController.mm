@@ -991,16 +991,39 @@ static UIViewController* DOLTopViewController(void)
     [_chatView scrollRangeToVisible:NSMakeRange(_chatView.text.length, 0)];
     break;
   case DOLNetPlayEventGame: {
-    const bool available = DOLNetPlayIsSelectedGameAvailable(_nativeSession);
-    if (available)
+    NSString* problem = nil;
+    switch (DOLNetPlayGetSelectedGameComparison(_nativeSession))
     {
-      _gameLabel.text = [NSString stringWithFormat:@"Game: %@", message];
-      _gameLabel.textColor = UIColor.labelColor;
+    case DOLNetPlayGameComparisonSameGame:
+      break;
+    case DOLNetPlayGameComparisonDifferentHash:
+      problem = @"your game data does not match the host's";
+      break;
+    case DOLNetPlayGameComparisonDifferentDiscNumber:
+      problem = @"different disc";
+      break;
+    case DOLNetPlayGameComparisonDifferentRevision:
+      problem = @"different game revision";
+      break;
+    case DOLNetPlayGameComparisonDifferentRegion:
+      problem = @"different region";
+      break;
+    case DOLNetPlayGameComparisonDifferentGame:
+    case DOLNetPlayGameComparisonUnknown:
+      problem = @"not found in your library";
+      break;
+    }
+
+    if (problem)
+    {
+      _gameLabel.text =
+          [NSString stringWithFormat:@"Game: %@ (%@!)", message, problem];
+      _gameLabel.textColor = UIColor.systemRedColor;
     }
     else
     {
-      _gameLabel.text = [NSString stringWithFormat:@"Game: %@ (Not found in library!)", message];
-      _gameLabel.textColor = UIColor.systemRedColor;
+      _gameLabel.text = [NSString stringWithFormat:@"Game: %@", message];
+      _gameLabel.textColor = UIColor.labelColor;
     }
     break;
   }
@@ -1034,15 +1057,10 @@ static UIViewController* DOLTopViewController(void)
     _retryTraversalButton.hidden = true;
     break;
   case DOLNetPlayEventStartGame:
+    // DOLNetPlayStartClientGame validates the local game and reports a precise
+    // error (missing file, different region/revision/hash) before booting.
     if (_nativeSession)
-    {
-      if (!DOLNetPlayIsSelectedGameAvailable(_nativeSession))
-      {
-        [self netPlayError:@"The host started the game, but it was not found in your local library. Please add the matching game and try again."];
-        break;
-      }
       DOLNetPlayStartClientGame(_nativeSession);
-    }
     break;
   case DOLNetPlayEventPowerButton:
     if (_nativeSession)

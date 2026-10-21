@@ -150,7 +150,13 @@ typedef NS_ENUM(NSInteger, DOLSoftwareListDocumentPickerType) {
         didRequestGameLaunch:(EmulationBootParameter*)bootParameter {
   [self dismissViewControllerAnimated:false completion:^{
     self->_bootParameter = bootParameter;
-    [self performSegueWithIdentifier:@"emulation" sender:nil];
+    // Give UIKit a moment to finish tearing down the NetPlay sheet before
+    // presenting the emulation view, otherwise the second presentation can be
+    // dropped or crash while the first transition is still settling.
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+                     [self performSegueWithIdentifier:@"emulation" sender:nil];
+                   });
   }];
 }
 

@@ -14,6 +14,7 @@
 #include <cstdio>
 #include <cstring>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <utility>
 #include <vector>
@@ -134,16 +135,42 @@ public:
       m_callbacks.on_event(m_callbacks.context, event, message.c_str());
   }
 
-  bool HasSelectedGame() const { return !m_current_game.game_id.empty(); }
+  bool HasSelectedGame() const
+  {
+    std::lock_guard lk(m_current_game_mutex);
+    return !m_current_game.game_id.empty();
+  }
   bool IsSelectedGameAvailable()
   {
-    return HasSelectedGame() && (FindGameFile(m_current_game) != nullptr);
+    const auto identifier = GetSelectedGameIdentifier();
+    if (identifier.game_id.empty())
+      return false;
+
+    NetPlay::SyncIdentifierComparison comparison =
+        NetPlay::SyncIdentifierComparison::DifferentGame;
+    return FindGameFile(identifier, &comparison) != nullptr &&
+           comparison == NetPlay::SyncIdentifierComparison::SameGame;
   }
   std::string GetSelectedGameTitle()
   {
-    if (const auto game = FindGameFile(m_current_game))
+    const auto identifier = GetSelectedGameIdentifier();
+    if (const auto game = FindGameFile(identifier))
       return game->GetName(UICommon::GameFile::Variant::LongAndPossiblyCustom);
     return {};
+  }
+  NetPlay::SyncIdentifier GetSelectedGameIdentifier() const
+  {
+    std::lock_guard lk(m_current_game_mutex);
+    return m_current_game;
+  }
+  NetPlay::SyncIdentifierComparison GetSelectedGameComparison()
+  {
+    const auto identifier = GetSelectedGameIdentifier();
+    NetPlay::SyncIdentifierComparison comparison =
+        NetPlay::SyncIdentifierComparison::Unknown;
+    if (!identifier.game_id.empty())
+      FindGameFile(identifier, &comparison);
+    return comparison;
   }
 
 private:
@@ -152,6 +179,7 @@ private:
   std::vector<std::shared_ptr<const UICommon::GameFile>> m_games;
   NetPlay::NetPlayClient* m_client = nullptr;
   NetPlay::NetPlayServer* m_server = nullptr;
+  mutable std::mutex m_current_game_mutex;
   NetPlay::SyncIdentifier m_current_game{};
   std::chrono::steady_clock::time_point m_last_players_update{};
   bool m_stop_requested = true;
@@ -232,6 +260,20 @@ public:
   FindGame(const NetPlay::SyncIdentifier& identifier,
            NetPlay::SyncIdentifierComparison* comparison = nullptr) const
   {
+    // CompareSyncIdentifier is expensive: it reads the disc to calculate the sync
+    // hash. NetPlay UI code asks for the same identifier repeatedly while starting
+    // a game, so remember the last lookup instead of hashing the game again on the
+    // main thread every time.
+    {
+      std::lock_guard lk(m_last_game_lookup_mutex);
+      if (m_last_game_lookup.valid && m_last_game_lookup.identifier == identifier)
+      {
+        if (comparison)
+          *comparison = m_last_game_lookup.comparison;
+        return m_last_game_lookup.game;
+      }
+    }
+
     NetPlay::SyncIdentifierComparison best = NetPlay::SyncIdentifierComparison::DifferentGame;
     std::shared_ptr<const UICommon::GameFile> result;
     for (const auto& game : m_games)
@@ -243,6 +285,15 @@ public:
         result = game;
       }
     }
+
+    {
+      std::lock_guard lk(m_last_game_lookup_mutex);
+      m_last_game_lookup.valid = true;
+      m_last_game_lookup.identifier = identifier;
+      m_last_game_lookup.game = result;
+      m_last_game_lookup.comparison = best;
+    }
+
     if (comparison)
       *comparison = best;
     return result;
@@ -258,7 +309,12 @@ public:
   bool IsSelectedGameAvailable()
   {
     if (m_server && !m_server->GetSelectedGameName().empty())
-      return FindGame(m_server->GetSelectedGameIdentifier()) != nullptr;
+    {
+      NetPlay::SyncIdentifierComparison comparison =
+          NetPlay::SyncIdentifierComparison::DifferentGame;
+      return FindGame(m_server->GetSelectedGameIdentifier(), &comparison) != nullptr &&
+             comparison == NetPlay::SyncIdentifierComparison::SameGame;
+    }
     return m_ui && m_ui->IsSelectedGameAvailable();
   }
 
@@ -269,9 +325,33 @@ public:
     return m_ui ? m_ui->GetSelectedGameTitle() : "";
   }
 
+  NetPlay::SyncIdentifierComparison GetSelectedGameComparison()
+  {
+    if (m_server && !m_server->GetSelectedGameName().empty())
+    {
+      NetPlay::SyncIdentifierComparison comparison =
+          NetPlay::SyncIdentifierComparison::Unknown;
+      FindGame(m_server->GetSelectedGameIdentifier(), &comparison);
+      return comparison;
+    }
+    return m_ui ? m_ui->GetSelectedGameComparison() :
+                  NetPlay::SyncIdentifierComparison::Unknown;
+  }
+
 private:
+  struct GameLookupCache
+  {
+    bool valid = false;
+    NetPlay::SyncIdentifier identifier{};
+    std::shared_ptr<const UICommon::GameFile> game;
+    NetPlay::SyncIdentifierComparison comparison =
+        NetPlay::SyncIdentifierComparison::DifferentGame;
+  };
+
   UICommon::GameFileCache m_game_cache;
   std::vector<std::shared_ptr<const UICommon::GameFile>> m_games;
+  mutable std::mutex m_last_game_lookup_mutex;
+  mutable GameLookupCache m_last_game_lookup;
   std::unique_ptr<IOSNetPlayUI> m_ui;
   std::unique_ptr<NetPlay::NetPlayServer> m_server;
   std::unique_ptr<NetPlay::NetPlayClient> m_client;
@@ -328,7 +408,10 @@ void IOSNetPlayUI::AppendChat(const std::string& message)
 void IOSNetPlayUI::OnMsgChangeGame(const NetPlay::SyncIdentifier& identifier,
                                    const std::string& name)
 {
-  m_current_game = identifier;
+  {
+    std::lock_guard lk(m_current_game_mutex);
+    m_current_game = identifier;
+  }
   Emit(DOLNetPlayEventGame, name);
 }
 
@@ -336,10 +419,32 @@ void IOSNetPlayUI::StartSelectedGame()
 {
   if (!m_client)
     return;
-  if (const auto game = FindGameFile(m_current_game))
-    m_client->StartGame(game->GetFilePath());
-  else
-    Emit(DOLNetPlayEventError, "The selected game is not in the local library.");
+
+  const auto identifier = GetSelectedGameIdentifier();
+  if (identifier.game_id.empty())
+  {
+    Emit(DOLNetPlayEventError, "The host started a game, but no game is selected locally.");
+    return;
+  }
+
+  NetPlay::SyncIdentifierComparison comparison =
+      NetPlay::SyncIdentifierComparison::DifferentGame;
+  const auto game = FindGameFile(identifier, &comparison);
+  if (!game)
+  {
+    Emit(DOLNetPlayEventError,
+         "The host started the game, but it was not found in your local library.");
+    return;
+  }
+  if (comparison != NetPlay::SyncIdentifierComparison::SameGame)
+  {
+    Emit(DOLNetPlayEventError,
+         "Your copy of this game does not match the host's copy. Use the same game, "
+         "region, revision, and disc version.");
+    return;
+  }
+
+  m_client->StartGame(game->GetFilePath());
 }
 
 void IOSNetPlayUI::OnDesync(u32 frame, const std::string& player)
@@ -555,6 +660,15 @@ DOLNetPlayIsSelectedGameAvailable(void* opaque)
 {
   auto* session = static_cast<IOSNetPlaySession*>(opaque);
   return session && session->IsSelectedGameAvailable();
+}
+
+extern "C" __attribute__((visibility("default"))) int
+DOLNetPlayGetSelectedGameComparison(void* opaque)
+{
+  auto* session = static_cast<IOSNetPlaySession*>(opaque);
+  if (!session)
+    return static_cast<int>(DOLNetPlayGameComparisonUnknown);
+  return static_cast<int>(session->GetSelectedGameComparison());
 }
 
 extern "C" __attribute__((visibility("default"))) bool

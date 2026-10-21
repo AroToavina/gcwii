@@ -23,6 +23,7 @@
 #include "Core/Boot/Boot.h"
 #include "Core/Config/NetplaySettings.h"
 #include "Core/Core.h"
+#include "Core/IOS/FS/FileSystem.h"
 #include "Core/NetPlayClient.h"
 #include "Core/NetPlayCommon.h"
 #include "Core/NetPlayServer.h"

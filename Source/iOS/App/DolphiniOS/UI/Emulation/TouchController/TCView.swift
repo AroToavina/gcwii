@@ -106,6 +106,21 @@ import UIKit
     return result
   }
   
+  // The joystick handle and D-pad image install their own gesture recognizers.
+  // While editing they would win over the drag recognizer on the control, so
+  // disable them for the duration of layout editing.
+  private func setSubcontrolGesturesEnabled(_ enabled: Bool, in view: UIView)
+  {
+    for subview in view.subviews
+    {
+      for recognizer in subview.gestureRecognizers ?? []
+      {
+        recognizer.isEnabled = enabled
+      }
+      setSubcontrolGesturesEnabled(enabled, in: subview)
+    }
+  }
+  
   func getControlIdentifier(for control: UIView) -> String?
   {
     if let btn = control as? TCButton
@@ -178,6 +193,11 @@ import UIKit
         control.layer.cornerRadius = 8.0
         control.isUserInteractionEnabled = true
         
+        if control is TCJoystick || control is TCDirectionalPad
+        {
+          setSubcontrolGesturesEnabled(false, in: control)
+        }
+        
         if panRecognizers[control] == nil
         {
           let pan = UIPanGestureRecognizer(target: self, action: #selector(handleControlDrag(_:)))
@@ -189,6 +209,10 @@ import UIKit
       else
       {
         control.layer.borderWidth = 0.0
+        if control is TCJoystick || control is TCDirectionalPad
+        {
+          setSubcontrolGesturesEnabled(true, in: control)
+        }
         if let pan = panRecognizers[control]
         {
           control.removeGestureRecognizer(pan)

@@ -172,7 +172,8 @@ import UIKit
     {
       if enabled
       {
-        control.layer.borderColor = UIColor.systemCyan.cgColor
+        // UIColor.systemCyan requires iOS 15, but the app targets iOS 14.
+        control.layer.borderColor = UIColor.cyan.cgColor
         control.layer.borderWidth = 2.0
         control.layer.cornerRadius = 8.0
         control.isUserInteractionEnabled = true

@@ -3,8 +3,6 @@
 
 #import "DebugLog.h"
 
-#import <UIKit/UIKit.h>
-
 #include <execinfo.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -13,6 +11,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <sys/utsname.h>
 #include <unistd.h>
 
 #include <initializer_list>
@@ -273,11 +272,18 @@ void DOLLogStartSession(void)
   NSBundle* bundle = [NSBundle mainBundle];
   NSString* version = [bundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"?";
   NSString* build = [bundle objectForInfoDictionaryKey:@"CFBundleVersion"] ?: @"?";
-  UIDevice* device = [UIDevice currentDevice];
+
+  // UIKit is not linked into libdolphin, so identify the device through uname() and
+  // NSProcessInfo instead of UIDevice.
+  struct utsname system_info = {};
+  NSString* machine = uname(&system_info) == 0 ?
+                         [NSString stringWithUTF8String:system_info.machine] :
+                         @"?";
+  NSString* system_version = [NSProcessInfo processInfo].operatingSystemVersionString ?: @"?";
 
   AppendLine("=====", "DolphiniOS debug log");
   AppendLineF("APP", @"Version %@ (%@)", version, build);
-  AppendLineF("APP", @"Device %@, %@ %@", device.model, device.systemName, device.systemVersion);
+  AppendLineF("APP", @"Device %@, %@", machine, system_version);
   AppendLineF("APP", @"Log file %@", DOLLogFilePath());
   AppendLine("=====", "Log truncated for this launch");
 }

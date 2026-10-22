@@ -82,12 +82,14 @@ in lockstep, so any difference in the loaded disc or emulated hardware state is 
 
 ### 1. Install
 
-1. Grab the unsigned IPA from the latest successful run on the
-   [Actions](https://github.com/AroToavina/gcwii/actions) page (artifact
-   `gcwii-unsigned-IPA`).
+1. Download the unsigned IPA from the [Releases](https://github.com/AroToavina/gcwii/releases)
+   page (release `v1.0.0`, Dolphin core 2609).
 2. Sideload it with SideStore, AltStore, Sideloadly, TrollStore or Xcode. The IPA is **unsigned**, so
    it must be signed with your own certificate.
 3. Launch gcwii and enable JIT as described above *before* starting a Netplay session.
+
+> Use the IPA attached to the latest release. Workflow artifacts are development builds and are
+> not supported installation packages.
 
 ### 2. Add your games
 
@@ -143,7 +145,7 @@ over the internet.
 
 gcwii is built exactly like upstream DolphiniOS: Xcode for the app, CMake for the Dolphin core. The
 [build workflow](.github/workflows/build.yml) contains the full, reproducible recipe used for the
-published IPAs:
+released IPA:
 
 ```sh
 xcodebuild archive \

@@ -11,6 +11,9 @@ Source/Core/Common/scmrev.h
 /[Bb]uild*/
 /[Bb]inary*/
 /obj/
+
+# Ignore packaged iOS apps
+*.ipa
 # Ignore files output by Android cmake build
 /Source/Android/app/.cxx/
 /libs/

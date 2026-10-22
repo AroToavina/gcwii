@@ -19,6 +19,7 @@
 #import "VideoCommon/Present.h"
 #import "VideoCommon/VideoConfig.h"
 
+#import "DebugLog.h"
 #import "EmulationBootParameter.h"
 #import "HostNotifications.h"
 #import "HostQueue.h"
@@ -89,6 +90,7 @@
 }
 
 - (void)runEmulationWithBootParameter:(EmulationBootParameter*)bootParameter {
+  DOLLogWrite("EMULATION", @"runEmulationWithBootParameter");
   dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
     [self emulationLoopWithBootParameter:bootParameter];
   });
@@ -129,20 +131,27 @@
     
     std::unique_ptr<BootParameters> boot = [bootParameter generateDolphinBootParameter];
     
+    DOLLogWrite("EMULATION", @"BootCore starting");
     if (!BootManager::BootCore(system, std::move(boot), wsi)) {
+      DOLLogWrite("EMULATION", @"BootCore failed to init the core");
       PanicAlertFmt("Failed to init core!");
     }
+    DOLLogWriteF("EMULATION", @"BootCore returned, state %d",
+                 static_cast<int>(Core::GetState(system)));
   });
   
   while (Core::GetState(Core::System::GetInstance()) == Core::State::Starting) {
     [NSThread sleepForTimeInterval:0.025];
   }
   
+  DOLLogWrite("EMULATION", @"emulation started");
   [[NSNotificationCenter defaultCenter] postNotificationName:DOLEmulationDidStartNotification object:self userInfo:nil];
   
   while (Core::IsRunning(Core::System::GetInstance())) {
     [NSThread sleepForTimeInterval:0.025];
   }
+  
+  DOLLogWrite("EMULATION", @"emulation stopped");
   
   dispatch_sync(dispatch_get_main_queue(), ^{
     Core::DeclareAsHostThread();

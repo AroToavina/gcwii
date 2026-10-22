@@ -3,6 +3,7 @@
 
 #import "AudioSessionManager.h"
 #import "BootNoticeManager.h"
+#import "DebugLog.h"
 #import "DolphinCoreService.h"
 #import "EmulationCoordinator.h"
 #import "FirebaseService.h"

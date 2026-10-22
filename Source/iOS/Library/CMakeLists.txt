@@ -1,4 +1,6 @@
 add_library(dolphin SHARED
+  DebugLog.h
+  DebugLog.mm
   Host.mm
   NetPlay.h
   NetPlay.mm

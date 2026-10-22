@@ -15,6 +15,7 @@
 #import "Core/Core.h"
 #import "Core/System.h"
 
+#import "DebugLog.h"
 #import "EmulationBootParameter.h"
 #import "EmulationCoordinator.h"
 #import "FoundationStringUtil.h"
@@ -60,12 +61,29 @@
 - (void)setSelectedGame:(nullable GameFilePtrWrapper*)wrapper;
 - (void)updateSetupGameButton;
 - (void)updateSessionGameState;
+- (void)confirmStartGame;
+- (void)updateGameLabelForComparison:(int)comparison title:(NSString*)title;
 - (NSArray<GameFilePtrWrapper*>*)libraryGames;
 @end
 
 namespace
 {
 NetPlayViewController* s_active_netplay_controller = nil;
+
+// Building sync identifiers and comparing games hashes the disc, which takes long
+// enough that it cannot run on the main thread. Every slow NetPlay call runs on this
+// serial queue, including session teardown, so a session is never destroyed while a
+// call is still using it.
+dispatch_queue_t NetPlayAPIQueue()
+{
+  static dispatch_queue_t queue = nil;
+  static dispatch_once_t once;
+  dispatch_once(&once, ^{
+    queue = dispatch_queue_create("me.oatmealdome.DolphiniOS.netplay-api",
+                                  DISPATCH_QUEUE_SERIAL);
+  });
+  return queue;
+}
 
 NSString* ToNSString(const std::string& value)
 {
@@ -731,6 +749,8 @@ static UIViewController* DOLTopViewController(void)
 
   _connectButton.enabled = false;
   s_active_netplay_controller = self;
+  DOLLogWriteF("NETPLAY", @"UI connecting (host=%d traversal=%d port=%ld endpoint=\"%@\")",
+               hosting ? 1 : 0, traversal ? 1 : 0, (long)port, endpoint);
   _statusLabel.text = hosting ? @"Starting NetPlay host…" : @"Connecting to NetPlay…";
   _games = [self libraryGames];
   std::vector<std::shared_ptr<const UICommon::GameFile>> gameSharedPtrs;
@@ -866,15 +886,39 @@ static UIViewController* DOLTopViewController(void)
   const std::string path = wrapper.gameFile->GetFilePath();
   NSString* title =
       ToNSString(wrapper.gameFile->GetName(UICommon::GameFile::Variant::LongAndPossiblyCustom));
-  if (!DOLNetPlaySetGame(_nativeSession, path.c_str()))
-  {
-    _gameLabel.textColor = UIColor.systemRedColor;
-    _gameLabel.text = [NSString stringWithFormat:@"Could not select %@ for this session.", title];
-    return;
-  }
+
   _gameLabel.textColor = UIColor.labelColor;
   _gameLabel.text = [NSString stringWithFormat:@"Game: %@", title];
   [_changeGameButton setTitle:@"Change game" forState:UIControlStateNormal];
+
+  // ChangeGame builds the sync identifier, which hashes the disc. On a large game that
+  // takes seconds, and running it here froze the app long enough for iOS to kill it.
+  void* session = _nativeSession;
+  DOLLogWriteF("NETPLAY", @"UI selected game \"%@\"", title);
+  dispatch_async(NetPlayAPIQueue(), ^{
+    const bool changed = DOLNetPlaySetGame(session, path.c_str());
+    DOLLogWriteF("NETPLAY", @"ChangeGame for \"%@\" %s", title, changed ? "succeeded" : "failed");
+    if (changed)
+    {
+      // Hash the disc now, off the main thread, so starting the game later is instant.
+      DOLNetPlayGetSelectedGameComparison(session);
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      if (session != self->_nativeSession)
+        return;
+      if (!changed)
+      {
+        self->_gameLabel.textColor = UIColor.systemRedColor;
+        self->_gameLabel.text =
+            [NSString stringWithFormat:@"Could not select %@ for this session.", title];
+        return;
+      }
+      self->_gameLabel.textColor = UIColor.labelColor;
+      self->_gameLabel.text = [NSString stringWithFormat:@"Game: %@", title];
+      [self->_changeGameButton setTitle:@"Change game" forState:UIControlStateNormal];
+    });
+  });
 }
 
 - (void)updateSetupGameButton
@@ -1079,21 +1123,46 @@ static UIViewController* DOLTopViewController(void)
 {
   if (!_nativeSession)
     return;
-  if (!DOLNetPlayHasGameSelected(_nativeSession))
-  {
-    [self netPlayError:@"Please select a game before starting NetPlay."];
+
+  // These checks can hash the selected disc, so they run off the main thread; a long
+  // stall there is what makes iOS kill the app when the host presses Start.
+  void* session = _nativeSession;
+  _startButton.enabled = false;
+  DOLLogWrite("NETPLAY", @"UI Start pressed");
+  dispatch_async(NetPlayAPIQueue(), ^{
+    NSString* problem = nil;
+    if (!DOLNetPlayHasGameSelected(session))
+    {
+      problem = @"Please select a game before starting NetPlay.";
+    }
+    else if (!DOLNetPlayIsSelectedGameAvailable(session))
+    {
+      problem = @"The selected game file is not available in your local library.";
+    }
+    else if (!DOLNetPlayDoAllPlayersHaveGame(session))
+    {
+      problem = @"At least one player does not have the selected game. Ask everyone to add the matching game file to their library.";
+    }
+    DOLLogWriteF("NETPLAY", @"UI start checks finished: %@", problem ?: @"ok");
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      if (session != self->_nativeSession)
+        return;
+      self->_startButton.enabled = true;
+      if (problem)
+      {
+        [self netPlayError:problem];
+        return;
+      }
+      [self confirmStartGame];
+    });
+  });
+}
+
+- (void)confirmStartGame
+{
+  if (!_nativeSession)
     return;
-  }
-  if (!DOLNetPlayIsSelectedGameAvailable(_nativeSession))
-  {
-    [self netPlayError:@"The selected game file is not available in your local library."];
-    return;
-  }
-  if (!DOLNetPlayDoAllPlayersHaveGame(_nativeSession))
-  {
-    [self netPlayError:@"At least one player does not have the selected game. Ask everyone to add the matching game file to their library."];
-    return;
-  }
   if (Config::Get(Config::MAIN_CPU_THREAD))
   {
     UIAlertController* warning = [UIAlertController
@@ -1174,10 +1243,14 @@ static UIViewController* DOLTopViewController(void)
   [_changeGameButton setTitle:@"Select game" forState:UIControlStateNormal];
   if (!session)
     return;
-  dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+  dispatch_async(NetPlayAPIQueue(), ^{
     DOLNetPlayClose(session);
     if (context)
-      CFBridgingRelease(context);
+    {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        CFBridgingRelease(context);
+      });
+    }
   });
 }
 
@@ -1203,40 +1276,20 @@ static UIViewController* DOLTopViewController(void)
     [_chatView scrollRangeToVisible:NSMakeRange(_chatView.text.length, 0)];
     break;
   case DOLNetPlayEventGame: {
-    NSString* problem = nil;
-    switch (DOLNetPlayGetSelectedGameComparison(_nativeSession))
-    {
-    case DOLNetPlayGameComparisonSameGame:
-      break;
-    case DOLNetPlayGameComparisonDifferentHash:
-      problem = @"your game data does not match the host's";
-      break;
-    case DOLNetPlayGameComparisonDifferentDiscNumber:
-      problem = @"different disc";
-      break;
-    case DOLNetPlayGameComparisonDifferentRevision:
-      problem = @"different game revision";
-      break;
-    case DOLNetPlayGameComparisonDifferentRegion:
-      problem = @"different region";
-      break;
-    case DOLNetPlayGameComparisonDifferentGame:
-    case DOLNetPlayGameComparisonUnknown:
-      problem = @"not found in your library";
-      break;
-    }
-
-    if (problem)
-    {
-      _gameLabel.text =
-          [NSString stringWithFormat:@"Game: %@ (%@!)", message, problem];
-      _gameLabel.textColor = UIColor.systemRedColor;
-    }
-    else
-    {
-      _gameLabel.text = [NSString stringWithFormat:@"Game: %@", message];
-      _gameLabel.textColor = UIColor.labelColor;
-    }
+    // Comparing the host's game with the local copy hashes the disc; keep that off the
+    // main thread so a large game cannot freeze the UI.
+    void* session = _nativeSession;
+    _gameLabel.textColor = UIColor.secondaryLabelColor;
+    _gameLabel.text = [NSString stringWithFormat:@"Game: %@ (checking…)", message];
+    dispatch_async(NetPlayAPIQueue(), ^{
+      const int comparison = DOLNetPlayGetSelectedGameComparison(session);
+      DOLLogWriteF("NETPLAY", @"UI game comparison result %d for \"%@\"", comparison, message);
+      dispatch_async(dispatch_get_main_queue(), ^{
+        if (session != self->_nativeSession)
+          return;
+        [self updateGameLabelForComparison:comparison title:message];
+      });
+    });
     break;
   }
   case DOLNetPlayEventStatus:
@@ -1271,13 +1324,52 @@ static UIViewController* DOLTopViewController(void)
   case DOLNetPlayEventStartGame:
     // DOLNetPlayStartClientGame validates the local game and reports a precise
     // error (missing file, different region/revision/hash) before booting.
+    DOLLogWrite("NETPLAY", @"UI received the start game event");
     if (_nativeSession)
       DOLNetPlayStartClientGame(_nativeSession);
+    DOLLogWrite("NETPLAY", @"UI start game request returned");
     break;
   case DOLNetPlayEventPowerButton:
     if (_nativeSession)
       DOLNetPlayTriggerPowerButton(_nativeSession);
     break;
+  }
+}
+
+- (void)updateGameLabelForComparison:(int)comparison title:(NSString*)title
+{
+  NSString* problem = nil;
+  switch (comparison)
+  {
+    case DOLNetPlayGameComparisonSameGame:
+      break;
+    case DOLNetPlayGameComparisonDifferentHash:
+      problem = @"your game data does not match the host's";
+      break;
+    case DOLNetPlayGameComparisonDifferentDiscNumber:
+      problem = @"different disc";
+      break;
+    case DOLNetPlayGameComparisonDifferentRevision:
+      problem = @"different game revision";
+      break;
+    case DOLNetPlayGameComparisonDifferentRegion:
+      problem = @"different region";
+      break;
+    case DOLNetPlayGameComparisonDifferentGame:
+    case DOLNetPlayGameComparisonUnknown:
+      problem = @"not found in your library";
+      break;
+  }
+
+  if (problem)
+  {
+    _gameLabel.text = [NSString stringWithFormat:@"Game: %@ (%@!)", title, problem];
+    _gameLabel.textColor = UIColor.systemRedColor;
+  }
+  else
+  {
+    _gameLabel.text = [NSString stringWithFormat:@"Game: %@", title];
+    _gameLabel.textColor = UIColor.labelColor;
   }
 }
 
@@ -1421,6 +1513,7 @@ static UIViewController* DOLTopViewController(void)
   }
 
   const std::string boot_path = FoundationToCppString(path);
+  DOLLogWriteF("NETPLAY", @"UI booting NetPlay game %@", path);
   if (path.length == 0 || !File::Exists(boot_path))
   {
     [self netPlayError:@"The game file could not be found on disk to boot NetPlay."];
@@ -1441,6 +1534,7 @@ static UIViewController* DOLTopViewController(void)
     }
   }
   [self.delegate netPlayViewController:self didRequestGameLaunch:parameter];
+  DOLLogWrite("NETPLAY", @"UI handed the boot request to the software list");
   return YES;
 }
 

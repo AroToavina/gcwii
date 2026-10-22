@@ -20,6 +20,7 @@
 
 #import "UICommon/UICommon.h"
 
+#import "DebugLog.h"
 #import "DolphiniOS-Swift.h"
 #import "EmulationCoordinator.h"
 #import "FastmemManager.h"
@@ -31,6 +32,13 @@
 @implementation DolphinCoreService
 
 - (BOOL)application:(UIApplication*)application didFinishLaunchingWithOptions:(NSDictionary<UIApplicationLaunchOptionsKey,id>*)launchOptions {
+  // events.log is truncated on every boot and lives in the Documents folder next to
+  // the game files. Start it before anything else can crash.
+  DOLLogStartSession();
+  DOLLogInstallCrashHandlers();
+  DOLLogWriteF("APP", @"didFinishLaunching, applicationState=%d",
+               static_cast<int>(application.applicationState));
+
   Core::DeclareAsHostThread();
   
   UICommon::SetUserDirectory(FoundationToCppString([UserFolderUtil getUserFolder]));
@@ -46,6 +54,10 @@
 #endif
   
   UICommon::Init();
+
+  // Dolphin's own log (NetPlay, boot, core errors) is mirrored into events.log so a
+  // NetPlay failure can be diagnosed from the file alone.
+  DOLLogEnableCoreLogging();
   
   [[MsgAlertManager shared] registerHandler];
   
@@ -72,6 +84,7 @@
 }
 
 - (void)applicationDidBecomeActive:(UIApplication*)application {
+  DOLLogWrite("APP", @"applicationDidBecomeActive");
   DOLHostQueueRunSync(^{
     auto& system = Core::System::GetInstance();
     
@@ -82,6 +95,7 @@
 }
 
 - (void)applicationWillResignActive:(UIApplication*)application {
+  DOLLogWrite("APP", @"applicationWillResignActive");
   DOLHostQueueRunSync(^{
     auto& system = Core::System::GetInstance();
     
@@ -95,6 +109,7 @@
 }
 
 - (void)applicationWillTerminate:(UIApplication*)application {
+  DOLLogWrite("APP", @"applicationWillTerminate");
   DOLHostQueueRunSync(^{
     auto& system = Core::System::GetInstance();
     

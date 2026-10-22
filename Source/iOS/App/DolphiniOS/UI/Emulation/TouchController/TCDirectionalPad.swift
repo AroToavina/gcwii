@@ -74,13 +74,14 @@ class TCDirectionalPad: UIView
     {
       return
     }
-    let imageView = gesture.view as! UIImageView
+    guard let imageView = gesture.view as? UIImageView else { return }
     let point = gesture.location(in: self)
     var buttonPresses: [Bool] = [ false, false, false, false ]
     
-    if (gesture.state == .ended)
+    if (gesture.state == .ended || gesture.state == .cancelled || gesture.state == .failed)
     {
       imageView.image = dpadNoPressed
+      imageView.transform = .identity
       self.isPressed = false
     }
     else
@@ -174,4 +175,19 @@ class TCDirectionalPad: UIView
     }
   }
   
+  // Releases every direction, e.g. when the pads are hidden or the app is backgrounded
+  // in the middle of a press.
+  @objc func releaseAllButtons()
+  {
+    isPressed = false
+    if let imageView = subviews.compactMap({ $0 as? UIImageView }).first
+    {
+      imageView.image = dpadNoPressed
+      imageView.transform = .identity
+    }
+    for i in 0..<4
+    {
+      TCManagerInterface.setButtonStateFor(directionalPadType + i, controller: port, state: false)
+    }
+  }
 }

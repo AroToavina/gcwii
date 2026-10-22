@@ -193,7 +193,13 @@ import UIKit
         control.layer.cornerRadius = 8.0
         control.isUserInteractionEnabled = true
         
-        if control is TCJoystick || control is TCDirectionalPad
+        if let joystick = control as? TCJoystick
+        {
+          // The stick's pan recognizer now sits on the control itself, so it has to be
+          // switched off explicitly while the layout editor is dragging the control.
+          joystick.setInputEnabled(false)
+        }
+        else if control is TCDirectionalPad
         {
           setSubcontrolGesturesEnabled(false, in: control)
         }
@@ -209,7 +215,11 @@ import UIKit
       else
       {
         control.layer.borderWidth = 0.0
-        if control is TCJoystick || control is TCDirectionalPad
+        if let joystick = control as? TCJoystick
+        {
+          joystick.setInputEnabled(true)
+        }
+        else if control is TCDirectionalPad
         {
           setSubcontrolGesturesEnabled(true, in: control)
         }
@@ -242,6 +252,37 @@ import UIKit
     {
       saveOffset(for: control, offset: CGPoint(x: newX, y: newY))
       panStartOffsets[control] = CGPoint(x: newX, y: newY)
+    }
+  }
+  
+  // Releases every touch control: used when the pads are hidden or the app is
+  // backgrounded, so no stick keeps a value or a button stays pressed.
+  @objc func releaseAllInputs()
+  {
+    guard let real = real_view else { return }
+    for control in findMovableControls(in: real)
+    {
+      if let joystick = control as? TCJoystick
+      {
+        joystick.resetAxes()
+      }
+      else if let dpad = control as? TCDirectionalPad
+      {
+        dpad.releaseAllButtons()
+      }
+    }
+    releaseButtons(in: real)
+  }
+  
+  private func releaseButtons(in view: UIView)
+  {
+    for subview in view.subviews
+    {
+      if let button = subview as? TCButton
+      {
+        button.buttonReleased()
+      }
+      releaseButtons(in: subview)
     }
   }
   

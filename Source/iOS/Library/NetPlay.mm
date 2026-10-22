@@ -3,6 +3,8 @@
 
 #include "NetPlay.h"
 
+#import "DebugLog.h"
+
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 #include <net/if.h>
@@ -41,6 +43,39 @@ std::string FromCString(const char* text)
   return text ? text : "";
 }
 
+const char* EventName(int event)
+{
+  switch (event)
+  {
+  case DOLNetPlayEventPlayers:
+    return "Players";
+  case DOLNetPlayEventChat:
+    return "Chat";
+  case DOLNetPlayEventGame:
+    return "Game";
+  case DOLNetPlayEventStatus:
+    return "Status";
+  case DOLNetPlayEventError:
+    return "Error";
+  case DOLNetPlayEventIndex:
+    return "Index";
+  case DOLNetPlayEventStartGame:
+    return "StartGame";
+  case DOLNetPlayEventPowerButton:
+    return "PowerButton";
+  case DOLNetPlayEventConnectionLost:
+    return "ConnectionLost";
+  case DOLNetPlayEventTraversalRetryableError:
+    return "TraversalRetryableError";
+  case DOLNetPlayEventTraversalFatalError:
+    return "TraversalFatalError";
+  case DOLNetPlayEventTraversalConnected:
+    return "TraversalConnected";
+  default:
+    return "Unknown";
+  }
+}
+
 class IOSNetPlaySession;
 
 class IOSNetPlayUI final : public NetPlay::NetPlayUI
@@ -65,7 +100,11 @@ public:
   void OnMsgChangeGame(const NetPlay::SyncIdentifier& identifier,
                        const std::string& name) override;
   void OnMsgChangeGBARom(int, const NetPlay::GBAConfig&) override {}
-  void OnMsgStartGame() override { Emit(DOLNetPlayEventStartGame, ""); }
+  void OnMsgStartGame() override
+  {
+    DOLLogWrite("NETPLAY", @"OnMsgStartGame");
+    Emit(DOLNetPlayEventStartGame, "");
+  }
   void OnMsgStopGame() override {}
   void OnMsgPowerButton() override { Emit(DOLNetPlayEventPowerButton, ""); }
   void OnPlayerConnect(const std::string&) override { Update(); }
@@ -73,14 +112,23 @@ public:
   void OnPadBufferChanged(u32) override {}
   void OnHostInputAuthorityChanged(bool) override {}
   void OnDesync(u32 frame, const std::string& player) override;
-  void OnConnectionLost() override { Emit(DOLNetPlayEventConnectionLost, ""); }
+  void OnConnectionLost() override
+  {
+    DOLLogWrite("NETPLAY", @"OnConnectionLost");
+    Emit(DOLNetPlayEventConnectionLost, "");
+  }
   void OnConnectionError(const std::string& error) override
   {
+    DOLLogWriteF("NETPLAY", @"OnConnectionError: %s", error.c_str());
     Emit(DOLNetPlayEventError, error);
   }
   void OnTraversalError(Common::TraversalClient::FailureReason reason) override;
   void OnTraversalStateChanged(Common::TraversalClient::State state) override;
-  void OnGameStartAborted() override { Emit(DOLNetPlayEventError, "Game start was aborted."); }
+  void OnGameStartAborted() override
+  {
+    DOLLogWrite("NETPLAY", @"OnGameStartAborted");
+    Emit(DOLNetPlayEventError, "Game start was aborted.");
+  }
   void OnGolferChanged(bool, const std::string&) override {}
   void OnTtlDetermined(u8) override {}
   bool IsRecording() override { return false; }
@@ -131,6 +179,7 @@ public:
 
   void Emit(int event, const std::string& message)
   {
+    DOLLogWriteF("NETPLAY", @"event %s: %s", EventName(event), message.c_str());
     if (m_callbacks.on_event)
       m_callbacks.on_event(m_callbacks.context, event, message.c_str());
   }
@@ -211,6 +260,9 @@ public:
                const std::string& nickname, const std::string& traversal_server,
                u16 traversal_port, u16 traversal_port_alt, bool use_upnp)
   {
+    DOLLogWriteF("NETPLAY", @"Connect host=%d traversal=%d address=%s port=%u nick=%s upnp=%d",
+                 host ? 1 : 0, traversal ? 1 : 0, address.c_str(),
+                 static_cast<unsigned>(port), nickname.c_str(), use_upnp ? 1 : 0);
     const NetPlay::NetTraversalConfig traversal_config{traversal, traversal_server,
                                                        traversal_port, traversal_port_alt};
     if (host)
@@ -220,7 +272,13 @@ public:
                                                           traversal_config);
       m_ui->SetServer(m_server.get());
       if (!m_server->is_connected)
+      {
+        DOLLogWriteF("NETPLAY", @"Host failed to listen on port %u",
+                     static_cast<unsigned>(listen_port));
         return false;
+      }
+      DOLLogWriteF("NETPLAY", @"Host listening on port %u",
+                   static_cast<unsigned>(m_server->GetPort()));
 
       const std::string network_mode = Config::Get(Config::NETPLAY_NETWORK_MODE);
       m_server->SetHostInputAuthority(network_mode == "hostinputauthority" ||
@@ -237,8 +295,12 @@ public:
     }
 
     m_ui->SetClient(m_client.get());
+    DOLLogWriteF("NETPLAY", @"Client created, connected=%d",
+                 m_client->IsConnected() ? 1 : 0);
     if (m_client->IsConnected())
       m_client->AdjustPadBufferSize(Config::Get(Config::NETPLAY_CLIENT_BUFFER_SIZE));
+    DOLLogWriteF("NETPLAY", @"Connect finished, connected=%d",
+                 m_client->IsConnected() ? 1 : 0);
     return m_client->IsConnected();
   }
 
@@ -274,6 +336,11 @@ public:
       }
     }
 
+    // CompareSyncIdentifier reads the disc to build the sync hash, which is slow on a
+    // large game. It is called from the UI thread, so record how long the lookup takes
+    // to make main-thread stalls visible in events.log.
+    const auto started = std::chrono::steady_clock::now();
+
     NetPlay::SyncIdentifierComparison best = NetPlay::SyncIdentifierComparison::DifferentGame;
     std::shared_ptr<const UICommon::GameFile> result;
     for (const auto& game : m_games)
@@ -284,6 +351,16 @@ public:
         best = current;
         result = game;
       }
+    }
+
+    const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                std::chrono::steady_clock::now() - started)
+                                .count();
+    if (elapsed_ms > 50)
+    {
+      DOLLogWriteF("NETPLAY", @"Sync identifier lookup for %s took %lld ms (result %d)",
+                   identifier.game_id.c_str(), static_cast<long long>(elapsed_ms),
+                   static_cast<int>(best));
     }
 
     {
@@ -361,8 +438,15 @@ void IOSNetPlayUI::BootGame(const std::string& filename,
                             std::unique_ptr<BootSessionData> boot_session_data)
 {
   m_stop_requested = false;
+  DOLLogWriteF("NETPLAY", @"BootGame path=%s session data=%s", filename.c_str(),
+               boot_session_data ? "yes" : "no");
   if (m_callbacks.on_boot_game)
+  {
     m_callbacks.on_boot_game(m_callbacks.context, filename.c_str(), boot_session_data.release());
+    DOLLogWrite("NETPLAY", @"BootGame handed off to the app");
+    return;
+  }
+  DOLLogWrite("NETPLAY", @"BootGame has no app callback; the game will not start");
 }
 
 void IOSNetPlayUI::StopGame()
@@ -412,39 +496,51 @@ void IOSNetPlayUI::OnMsgChangeGame(const NetPlay::SyncIdentifier& identifier,
     std::lock_guard lk(m_current_game_mutex);
     m_current_game = identifier;
   }
+  DOLLogWriteF("NETPLAY", @"OnMsgChangeGame id=%s name=%s", identifier.game_id.c_str(),
+               name.c_str());
   Emit(DOLNetPlayEventGame, name);
 }
 
 void IOSNetPlayUI::StartSelectedGame()
 {
   if (!m_client)
+  {
+    DOLLogWrite("NETPLAY", @"StartSelectedGame without a client");
     return;
+  }
 
   const auto identifier = GetSelectedGameIdentifier();
   if (identifier.game_id.empty())
   {
+    DOLLogWrite("NETPLAY", @"StartSelectedGame without a selected game");
     Emit(DOLNetPlayEventError, "The host started a game, but no game is selected locally.");
     return;
   }
 
+  DOLLogWriteF("NETPLAY", @"StartSelectedGame validating game %s", identifier.game_id.c_str());
   NetPlay::SyncIdentifierComparison comparison =
       NetPlay::SyncIdentifierComparison::DifferentGame;
   const auto game = FindGameFile(identifier, &comparison);
   if (!game)
   {
+    DOLLogWrite("NETPLAY", @"StartSelectedGame: game not in the local library");
     Emit(DOLNetPlayEventError,
          "The host started the game, but it was not found in your local library.");
     return;
   }
   if (comparison != NetPlay::SyncIdentifierComparison::SameGame)
   {
+    DOLLogWriteF("NETPLAY", @"StartSelectedGame: comparison failed with %d",
+                 static_cast<int>(comparison));
     Emit(DOLNetPlayEventError,
          "Your copy of this game does not match the host's copy. Use the same game, "
          "region, revision, and disc version.");
     return;
   }
 
+  DOLLogWriteF("NETPLAY", @"StartSelectedGame: starting %s", game->GetFilePath().c_str());
   m_client->StartGame(game->GetFilePath());
+  DOLLogWrite("NETPLAY", @"StartSelectedGame: StartGame returned");
 }
 
 void IOSNetPlayUI::OnDesync(u32 frame, const std::string& player)
@@ -552,6 +648,7 @@ extern "C" __attribute__((visibility("default"))) void*
 DOLNetPlayCreateWithGames(const DOLGameFileHandle* game_file_ptrs, size_t game_count,
                          const DOLNetPlayCallbacks* callbacks)
 {
+  DOLLogWriteF("NETPLAY", @"DOLNetPlayCreateWithGames with %zu games", game_count);
   if (!callbacks)
     return nullptr;
   std::vector<std::shared_ptr<const UICommon::GameFile>> games;
@@ -584,7 +681,9 @@ DOLNetPlayConnect(void* opaque, bool host, bool traversal, const char* address_o
 
 extern "C" __attribute__((visibility("default"))) void DOLNetPlayClose(void* opaque)
 {
+  DOLLogWrite("NETPLAY", @"DOLNetPlayClose");
   delete static_cast<IOSNetPlaySession*>(opaque);
+  DOLLogWrite("NETPLAY", @"DOLNetPlayClose finished");
 }
 
 extern "C" __attribute__((visibility("default"))) uint16_t DOLNetPlayGetPort(void* opaque)
@@ -639,11 +738,20 @@ extern "C" __attribute__((visibility("default"))) bool
 DOLNetPlaySetGame(void* opaque, const char* path)
 {
   auto* session = static_cast<IOSNetPlaySession*>(opaque);
+  const std::string game_path = FromCString(path);
+  DOLLogWriteF("NETPLAY", @"DOLNetPlaySetGame %s", game_path.c_str());
   if (!session || !session->Server())
+  {
+    DOLLogWrite("NETPLAY", @"DOLNetPlaySetGame without a hosted session");
     return false;
-  const auto game = session->FindGame(FromCString(path));
+  }
+  const auto game = session->FindGame(game_path);
   if (!game)
+  {
+    DOLLogWrite("NETPLAY", @"DOLNetPlaySetGame: game not in the session game list");
     return false;
+  }
+  DOLLogWriteF("NETPLAY", @"DOLNetPlaySetGame: changing to %s", game_path.c_str());
   return session->Server()->ChangeGame(game->GetSyncIdentifier(),
                                        game->GetName(UICommon::GameFile::Variant::LongAndPossiblyCustom));
 }
@@ -701,14 +809,23 @@ DOLNetPlayDoAllPlayersHaveGame(void* opaque)
 extern "C" __attribute__((visibility("default"))) void DOLNetPlayStartGame(void* opaque)
 {
   auto* session = static_cast<IOSNetPlaySession*>(opaque);
+  DOLLogWrite("NETPLAY", @"DOLNetPlayStartGame");
   if (session && session->Server())
+  {
     session->Server()->RequestStartGame();
+    DOLLogWrite("NETPLAY", @"DOLNetPlayStartGame: RequestStartGame returned");
+  }
+  else
+  {
+    DOLLogWrite("NETPLAY", @"DOLNetPlayStartGame ignored: no hosted session");
+  }
 }
 
 extern "C" __attribute__((visibility("default"))) void
 DOLNetPlayStartClientGame(void* opaque)
 {
   auto* session = static_cast<IOSNetPlaySession*>(opaque);
+  DOLLogWrite("NETPLAY", @"DOLNetPlayStartClientGame");
   if (session)
     session->UI()->StartSelectedGame();
 }

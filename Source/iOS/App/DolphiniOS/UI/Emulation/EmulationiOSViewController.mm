@@ -110,6 +110,7 @@ typedef NS_ENUM(NSInteger, DOLEmulationVisibleTouchPad) {
   [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(receiveTitleChangedNotificationiOS) name:DOLHostTitleChangedNotification object:nil];
   [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(receiveRequestRenderWindowSizeNotificationiOS) name:DOLHostRequestRenderWindowSizeNotification object:nil];
   [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(receiveEmulationEndNotificationiOS) name:DOLEmulationDidEndNotification object:nil];
+  [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(releaseTouchInputs) name:UIApplicationWillResignActiveNotification object:nil];
 
   // Refresh the menu so a session that was opened from the software list while
   // emulation was booting shows up here.
@@ -126,6 +127,7 @@ typedef NS_ENUM(NSInteger, DOLEmulationVisibleTouchPad) {
   [[NSNotificationCenter defaultCenter] removeObserver:self name:DOLHostTitleChangedNotification object:nil];
   [[NSNotificationCenter defaultCenter] removeObserver:self name:DOLHostRequestRenderWindowSizeNotification object:nil];
   [[NSNotificationCenter defaultCenter] removeObserver:self name:DOLEmulationDidEndNotification object:nil];
+  [[NSNotificationCenter defaultCenter] removeObserver:self name:UIApplicationWillResignActiveNotification object:nil];
 }
 
 - (void)recreateMenu {
@@ -478,6 +480,14 @@ typedef NS_ENUM(NSInteger, DOLEmulationVisibleTouchPad) {
   [self presentViewController:alert animated:true completion:nil];
 }
 
+// Zeroes every touch control. Called when the app is backgrounded so a game never
+// resumes with a stick or button permanently held.
+- (void)releaseTouchInputs {
+  for (TCView* padView in self.touchPads) {
+    [padView releaseAllInputs];
+  }
+}
+
 - (void)updateVisibleTouchPadToGameCube {
   if (![self isGameCubeTouchPadAttached]) {
     return;
@@ -490,6 +500,9 @@ typedef NS_ENUM(NSInteger, DOLEmulationVisibleTouchPad) {
   if (_visibleTouchPad == touchPad) {
     return;
   }
+
+  // Swapping the visible pad must not leave a stick or button held down.
+  [self releaseTouchInputs];
 
   TCDeviceMotion* motion = [TCDeviceMotion shared];
 

@@ -79,7 +79,7 @@ dispatch_queue_t NetPlayAPIQueue()
   static dispatch_queue_t queue = nil;
   static dispatch_once_t once;
   dispatch_once(&once, ^{
-    queue = dispatch_queue_create("me.oatmealdome.DolphiniOS.netplay-api",
+    queue = dispatch_queue_create("com.gcwii.emu.netplay-api",
                                   DISPATCH_QUEUE_SERIAL);
   });
   return queue;

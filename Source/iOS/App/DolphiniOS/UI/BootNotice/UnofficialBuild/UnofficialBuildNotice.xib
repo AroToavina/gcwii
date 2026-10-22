@@ -43,9 +43,11 @@
                             <subviews>
                                 <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="G2L-KW-hUh" userLabel="Donate Text">
                                     <rect key="frame" x="0.0" y="0.0" width="335" height="223.33333333333334"/>
-                                    <string key="text">DolphiniOS is NOT an official version of Dolphin. It is a separate version based on the original Dolphin's code.
+                                    <string key="text">GCWii is NOT an official version of Dolphin. It is an independent fork of DolphiniOS, based on the original Dolphin's code.
 
-DO NOT ask for help on the official Dolphin forums or report bugs on the official Dolphin bug tracker. They will not be able to assist you.
+DO NOT ask for help on the official Dolphin forums, on the DolphiniOS support channels, or report bugs on the official Dolphin bug tracker. They are not responsible for this build and will not be able to assist you.
+
+Any problem, error, bug or crash in this build is the responsibility of the GCWii fork, not of the Dolphin Team.
 
 If you need help, go to the Settings tab and tap "Help".</string>
                                     <fontDescription key="fontDescription" type="system" pointSize="17"/>

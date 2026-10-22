@@ -302,7 +302,7 @@ typedef NS_ENUM(NSInteger, DOLEmulationVisibleTouchPad) {
         UIAlertAction* loadAction = [UIAlertAction actionWithTitle:@"Load" style:UIAlertActionStyleDefault
                                                        handler:^(UIAlertAction* action) {
             NSArray<UTType*>* types = @[
-                [UTType exportedTypeWithIdentifier:@"me.oatmealdome.dolphinios.skylander-dumps"]
+                [UTType exportedTypeWithIdentifier:@"com.gcwii.emu.skylander-dumps"]
               ];
             UIDocumentPickerViewController* pickerController = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:types];
             pickerController.delegate = self;

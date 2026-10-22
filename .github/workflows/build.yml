@@ -54,7 +54,6 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/build-Xcode" \
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
-            DOL_PBID_ORGANIZATION_IDENTIFIER="me.oatmealdome" \
             DOL_APP_ICON_ASSET_NAME="AppIcon" \
             DOL_BUILD_SOURCE="development" \
             CODE_SIGNING_ALLOWED=NO \
@@ -76,12 +75,12 @@ jobs:
           mkdir -p "$RUNNER_TEMP/ipa/Payload"
           ditto "$APP_PATH" "$RUNNER_TEMP/ipa/Payload/DolphiniOS.app"
           cd "$RUNNER_TEMP/ipa"
-          zip -qry "$GITHUB_WORKSPACE/DolphiniOS-unsigned.ipa" Payload
+          zip -qry "$GITHUB_WORKSPACE/gcwii-unsigned.ipa" Payload
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: DolphiniOS-unsigned-IPA
-          path: DolphiniOS-unsigned.ipa
+          name: gcwii-unsigned-IPA
+          path: gcwii-unsigned.ipa
           if-no-files-found: error
           retention-days: 14

@@ -19,7 +19,7 @@ class SettingsRootViewController : UITableViewController {
     tableView.deselectRow(at: indexPath, animated: true)
     
     if (indexPath.section == 0 && indexPath.row == 3) {
-      UIApplication.shared.open(URL(string: "https://oatmealdome.me/dolphinios/")!)
+      UIApplication.shared.open(URL(string: "https://github.com/AroToavina/gcwii/")!)
     }
   }
   

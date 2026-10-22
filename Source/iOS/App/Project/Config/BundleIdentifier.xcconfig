@@ -2,25 +2,22 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 //
-// Change this line to modify the organization identifier.
+// Change this line to modify the bundle identifier of GCWii.
 //
 
-DOL_PBID_ORGANIZATION_IDENTIFIER = use.your.own.organization.identifier
+DOL_PBID_BASE_IDENTIFIER = com.gcwii.emu
 
 //
 // You probably shouldn't touch anything below. (Unless you know what you're doing.)
 //
 
-DOL_PBID_APP_NAME[sdk=iphoneos*] = DolphiniOS
-DOL_PBID_APP_NAME[sdk=iphonesimulator*] = DolphiniOS
+PRODUCT_BUNDLE_IDENTIFIER[config=Debug (Non-Jailbroken)] = $(DOL_PBID_BASE_IDENTIFIER).njb.debug
+PRODUCT_BUNDLE_IDENTIFIER[config=Debug (Jailbroken)] = $(DOL_PBID_BASE_IDENTIFIER).debug
+PRODUCT_BUNDLE_IDENTIFIER[config=Release (Non-Jailbroken)] = $(DOL_PBID_BASE_IDENTIFIER)
+PRODUCT_BUNDLE_IDENTIFIER[config=Release (Beta, Non-Jailbroken)] = $(DOL_PBID_BASE_IDENTIFIER).beta
+PRODUCT_BUNDLE_IDENTIFIER[config=Release (Jailbroken)] = $(DOL_PBID_BASE_IDENTIFIER)
+PRODUCT_BUNDLE_IDENTIFIER[config=Release (Beta, Jailbroken)] = $(DOL_PBID_BASE_IDENTIFIER).beta
+PRODUCT_BUNDLE_IDENTIFIER[config=Release (TrollStore)] = $(DOL_PBID_BASE_IDENTIFIER).trollstore
+PRODUCT_BUNDLE_IDENTIFIER[config=Release (Beta, TrollStore)] = $(DOL_PBID_BASE_IDENTIFIER).trollstore.beta
 
-PRODUCT_BUNDLE_IDENTIFIER[config=Debug (Non-Jailbroken)] = $(DOL_PBID_ORGANIZATION_IDENTIFIER).$(DOL_PBID_APP_NAME)-njb-debug
-PRODUCT_BUNDLE_IDENTIFIER[config=Debug (Jailbroken)] = $(DOL_PBID_ORGANIZATION_IDENTIFIER).$(DOL_PBID_APP_NAME)-debug
-PRODUCT_BUNDLE_IDENTIFIER[config=Release (Non-Jailbroken)] = $(DOL_PBID_ORGANIZATION_IDENTIFIER).$(DOL_PBID_APP_NAME)-njb
-PRODUCT_BUNDLE_IDENTIFIER[config=Release (Beta, Non-Jailbroken)] = $(DOL_PBID_ORGANIZATION_IDENTIFIER).$(DOL_PBID_APP_NAME)-njb-patreon-beta
-PRODUCT_BUNDLE_IDENTIFIER[config=Release (Jailbroken)] = $(DOL_PBID_ORGANIZATION_IDENTIFIER).$(DOL_PBID_APP_NAME)
-PRODUCT_BUNDLE_IDENTIFIER[config=Release (Beta, Jailbroken)] = $(DOL_PBID_ORGANIZATION_IDENTIFIER).$(DOL_PBID_APP_NAME)-patreon-beta
-PRODUCT_BUNDLE_IDENTIFIER[config=Release (TrollStore)] = $(DOL_PBID_ORGANIZATION_IDENTIFIER).$(DOL_PBID_APP_NAME)-ts
-PRODUCT_BUNDLE_IDENTIFIER[config=Release (Beta, TrollStore)] = $(DOL_PBID_ORGANIZATION_IDENTIFIER).$(DOL_PBID_APP_NAME)-ts-patreon-beta
-
-// PRODUCT_BUNDLE_IDENTIFIER[config=xyz] = $(DOL_PBID_ORGANIZATION_IDENTIFIER).$(DOL_PBID_APP_NAME)
+// PRODUCT_BUNDLE_IDENTIFIER[config=xyz] = $(DOL_PBID_BASE_IDENTIFIER)

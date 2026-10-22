@@ -173,9 +173,9 @@ typedef NS_ENUM(NSInteger, DOLSoftwareListDocumentPickerType) {
 
 - (void)openDocumentPickerWithSoftwareContentTypesAndPickerType:(DOLSoftwareListDocumentPickerType)pickerType {
   NSArray<UTType*>* types = @[
-    [UTType exportedTypeWithIdentifier:@"me.oatmealdome.dolphinios.generic-software"],
-    [UTType exportedTypeWithIdentifier:@"me.oatmealdome.dolphinios.gamecube-software"],
-    [UTType exportedTypeWithIdentifier:@"me.oatmealdome.dolphinios.wii-software"]
+    [UTType exportedTypeWithIdentifier:@"com.gcwii.emu.generic-software"],
+    [UTType exportedTypeWithIdentifier:@"com.gcwii.emu.gamecube-software"],
+    [UTType exportedTypeWithIdentifier:@"com.gcwii.emu.wii-software"]
   ];
   
   [self openDocumentPickerWithContentTypes:types pickerType:pickerType];

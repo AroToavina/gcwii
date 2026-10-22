@@ -9,10 +9,10 @@
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <scenes>
-        <!--About Dolphin-->
+        <!--About GCWii-->
         <scene sceneID="eJk-aO-Mcv">
             <objects>
-                <viewController title="About Dolphin" modalPresentationStyle="formSheet" id="jWY-Tc-15b" customClass="AboutViewController" sceneMemberID="viewController">
+                <viewController title="About GCWii" modalPresentationStyle="formSheet" id="jWY-Tc-15b" customClass="AboutViewController" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="FfF-Vm-sL4">
                         <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
@@ -36,7 +36,7 @@
                                                     <constraint firstAttribute="height" constant="128" id="d8R-IJ-300"/>
                                                 </constraints>
                                             </imageView>
-                                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="DolphiniOS" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="tic-qF-vKG">
+                                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="GCWii" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="tic-qF-vKG">
                                                 <rect key="frame" x="0.0" y="98.5" width="335" height="33.5"/>
                                                 <fontDescription key="fontDescription" type="system" weight="semibold" pointSize="28"/>
                                                 <color key="textColor" systemColor="systemBlueColor"/>
@@ -53,12 +53,12 @@
                                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" id="JaN-3a-Tvq" userLabel="Copyright Three">
                                                 <rect key="frame" x="0.0" y="223.5" width="335" height="81.5"/>
                                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                                <string key="text">DolphiniOS is an unofficial and separately maintained port of Dolphin to iOS. The DolphiniOS Project has no relation to Dolphin Team.</string>
+                                                <string key="text">GCWii is an unofficial fork of DolphiniOS, which is an unofficial port of Dolphin to iOS. The Dolphin Team and the DolphiniOS Project have no relation to GCWii and are not responsible for any problems, errors, bugs or crashes in this build.</string>
                                                 <fontDescription key="fontDescription" type="system" pointSize="17"/>
                                                 <nil key="textColor"/>
                                                 <nil key="highlightedColor"/>
                                             </label>
-                                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="“GameCube” and “Wii” are trademarks of Nintendo. DolphiniOS is not affiliated with Nintendo in any way." textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" id="8w5-VR-H8a" userLabel="Piracy Notice">
+                                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="“GameCube” and “Wii” are trademarks of Nintendo. GCWii is not affiliated with Nintendo in any way." textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" id="8w5-VR-H8a" userLabel="Piracy Notice">
                                                 <rect key="frame" x="0.0" y="330.5" width="335" height="61"/>
                                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                                 <fontDescription key="fontDescription" type="system" pointSize="17"/>
@@ -108,7 +108,7 @@
                             <constraint firstItem="4YA-k4-zMM" firstAttribute="top" secondItem="1NQ-EU-bMe" secondAttribute="top" id="bLl-TP-l1Q"/>
                         </constraints>
                     </view>
-                    <navigationItem key="navigationItem" title="About Dolphin" id="L8Z-ZE-fDO">
+                    <navigationItem key="navigationItem" title="About GCWii" id="L8Z-ZE-fDO">
                         <barButtonItem key="rightBarButtonItem" systemItem="done" id="Kh6-kL-ZYJ">
                             <connections>
                                 <segue destination="nq2-RG-WiU" kind="unwind" unwindAction="unwindToSettings:" id="o3y-Xa-Bat"/>

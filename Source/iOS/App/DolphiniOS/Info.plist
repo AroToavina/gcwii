@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleDisplayName</key>
+	<string>GCWii</string>
+	<key>CFBundleName</key>
+	<string>GCWii</string>
 	<key>ALTDeviceID</key>
 	<string>NotSet</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
@@ -19,7 +23,7 @@
 			<string>Owner</string>
 			<key>LSItemContentTypes</key>
 			<array>
-				<string>me.oatmealdome.dolphinios.generic-software</string>
+				<string>com.gcwii.emu.generic-software</string>
 			</array>
 		</dict>
 		<dict>
@@ -33,7 +37,7 @@
 			<string>Owner</string>
 			<key>LSItemContentTypes</key>
 			<array>
-				<string>me.oatmealdome.dolphinios.gamecube-software</string>
+				<string>com.gcwii.emu.gamecube-software</string>
 			</array>
 		</dict>
 		<dict>
@@ -47,7 +51,7 @@
 			<string>Owner</string>
 			<key>LSItemContentTypes</key>
 			<array>
-				<string>me.oatmealdome.dolphinios.wii-software</string>
+				<string>com.gcwii.emu.wii-software</string>
 			</array>
 		</dict>
 		<dict>
@@ -61,7 +65,7 @@
 			<string>Owner</string>
 			<key>LSItemContentTypes</key>
 			<array>
-				<string>me.oatmealdome.dolphinios.skylander-dumps</string>
+				<string>com.gcwii.emu.skylander-dumps</string>
 			</array>
 		</dict>
 	</array>
@@ -143,7 +147,7 @@
 			<key>UTTypeIconFiles</key>
 			<array/>
 			<key>UTTypeIdentifier</key>
-			<string>me.oatmealdome.dolphinios.generic-software</string>
+			<string>com.gcwii.emu.generic-software</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -166,7 +170,7 @@
 			<key>UTTypeIconFiles</key>
 			<array/>
 			<key>UTTypeIdentifier</key>
-			<string>me.oatmealdome.dolphinios.gamecube-software</string>
+			<string>com.gcwii.emu.gamecube-software</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -187,7 +191,7 @@
 			<key>UTTypeIconFiles</key>
 			<array/>
 			<key>UTTypeIdentifier</key>
-			<string>me.oatmealdome.dolphinios.wii-software</string>
+			<string>com.gcwii.emu.wii-software</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -208,7 +212,7 @@
 			<key>UTTypeIconFiles</key>
 			<array/>
 			<key>UTTypeIdentifier</key>
-			<string>me.oatmealdome.dolphinios.skylander-dumps</string>
+			<string>com.gcwii.emu.skylander-dumps</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>

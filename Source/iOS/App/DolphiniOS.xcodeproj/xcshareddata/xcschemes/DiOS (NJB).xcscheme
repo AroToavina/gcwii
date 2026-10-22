@@ -15,7 +15,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "B9DC3DF527EFBD2C0084DAA4"
-               BuildableName = "DolphiniOS.app"
+               BuildableName = "GCWii.app"
                BlueprintName = "DolphiniOS"
                ReferencedContainer = "container:DolphiniOS.xcodeproj">
             </BuildableReference>
@@ -58,7 +58,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "B9DC3DF527EFBD2C0084DAA4"
-            BuildableName = "DolphiniOS.app"
+            BuildableName = "GCWii.app"
             BlueprintName = "DolphiniOS"
             ReferencedContainer = "container:DolphiniOS.xcodeproj">
          </BuildableReference>

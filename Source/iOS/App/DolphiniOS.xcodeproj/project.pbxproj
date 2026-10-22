@@ -532,7 +532,7 @@
 		B9D938A0283F239F00B290FC /* TCButtonType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TCButtonType.swift; sourceTree = "<group>"; };
 		B9D938A528418AFD00B290FC /* TCManagerInterface.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TCManagerInterface.h; sourceTree = "<group>"; };
 		B9D938A628418AFD00B290FC /* TCManagerInterface.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = TCManagerInterface.mm; sourceTree = "<group>"; };
-		B9DC3DF627EFBD2C0084DAA4 /* DolphiniOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DolphiniOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B9DC3DF627EFBD2C0084DAA4 /* GCWii.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GCWii.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B9DC3E0327EFBD2D0084DAA4 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		B9DC3E0527EFBD2F0084DAA4 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B9DC3E0827EFBD2F0084DAA4 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
@@ -1613,7 +1613,7 @@
 		B9DC3DF727EFBD2C0084DAA4 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				B9DC3DF627EFBD2C0084DAA4 /* DolphiniOS.app */,
+				B9DC3DF627EFBD2C0084DAA4 /* GCWii.app */,
 				B96C9A4F2A46C1CE002B5ECF /* DolphiniOSTests.xctest */,
 			);
 			name = Products;
@@ -1779,7 +1779,7 @@
 				B97E4B4A2964CBA100B3EE9C /* FirebaseCrashlytics */,
 			);
 			productName = DolphiniOS;
-			productReference = B9DC3DF627EFBD2C0084DAA4 /* DolphiniOS.app */;
+			productReference = B9DC3DF627EFBD2C0084DAA4 /* GCWii.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -2311,7 +2311,7 @@
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/DolphiniOS.app/DolphiniOS";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/GCWii.app/GCWii";
 			};
 			name = "Debug (Non-Jailbroken)";
 		};
@@ -2389,7 +2389,7 @@
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/DolphiniOS.app/DolphiniOS";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/GCWii.app/GCWii";
 			};
 			name = "Debug (Jailbroken)";
 		};
@@ -2459,7 +2459,7 @@
 				SWIFT_OBJC_BRIDGING_HEADER = "DolphiniOSTests/Swift/Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/DolphiniOS.app/DolphiniOS";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/GCWii.app/GCWii";
 				VALIDATE_PRODUCT = YES;
 			};
 			name = "Release (Non-Jailbroken)";
@@ -2530,7 +2530,7 @@
 				SWIFT_OBJC_BRIDGING_HEADER = "DolphiniOSTests/Swift/Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/DolphiniOS.app/DolphiniOS";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/GCWii.app/GCWii";
 				VALIDATE_PRODUCT = YES;
 			};
 			name = "Release (Beta, Non-Jailbroken)";
@@ -2601,7 +2601,7 @@
 				SWIFT_OBJC_BRIDGING_HEADER = "DolphiniOSTests/Swift/Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/DolphiniOS.app/DolphiniOS";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/GCWii.app/GCWii";
 				VALIDATE_PRODUCT = YES;
 			};
 			name = "Release (Jailbroken)";
@@ -2672,7 +2672,7 @@
 				SWIFT_OBJC_BRIDGING_HEADER = "DolphiniOSTests/Swift/Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/DolphiniOS.app/DolphiniOS";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/GCWii.app/GCWii";
 				VALIDATE_PRODUCT = YES;
 			};
 			name = "Release (TrollStore)";
@@ -2743,7 +2743,7 @@
 				SWIFT_OBJC_BRIDGING_HEADER = "DolphiniOSTests/Swift/Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/DolphiniOS.app/DolphiniOS";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/GCWii.app/GCWii";
 				VALIDATE_PRODUCT = YES;
 			};
 			name = "Release (Beta, Jailbroken)";
@@ -2814,7 +2814,7 @@
 				SWIFT_OBJC_BRIDGING_HEADER = "DolphiniOSTests/Swift/Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/DolphiniOS.app/DolphiniOS";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/GCWii.app/GCWii";
 				VALIDATE_PRODUCT = YES;
 			};
 			name = "Release (Beta, TrollStore)";
@@ -2904,7 +2904,8 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 5.0.0b6;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = GCWii;
+				PRODUCT_MODULE_NAME = DolphiniOS;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -2996,7 +2997,8 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 5.0.0b6;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = GCWii;
+				PRODUCT_MODULE_NAME = DolphiniOS;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -3087,7 +3089,8 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 5.0.0b6;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = GCWii;
+				PRODUCT_MODULE_NAME = DolphiniOS;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -3178,7 +3181,8 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 5.0.0b6;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = GCWii;
+				PRODUCT_MODULE_NAME = DolphiniOS;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -3327,7 +3331,8 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 5.0.0b6;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = GCWii;
+				PRODUCT_MODULE_NAME = DolphiniOS;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -3362,7 +3367,8 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 5.0.0b6;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = GCWii;
+				PRODUCT_MODULE_NAME = DolphiniOS;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -3453,7 +3459,8 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 5.0.0b6;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = GCWii;
+				PRODUCT_MODULE_NAME = DolphiniOS;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -3544,7 +3551,8 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 5.0.0b6;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = GCWii;
+				PRODUCT_MODULE_NAME = DolphiniOS;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
